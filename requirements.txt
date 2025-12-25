@@ -1,0 +1,11 @@
+pandas
+numpy
+sqlalchemy
+psycopg2-binary
+pyyaml
+python-dotenv
+pytest
+faker==25.2.0
+schedule==1.2.1
+pytest-cov==5.0.0
+loguru==0.7.3

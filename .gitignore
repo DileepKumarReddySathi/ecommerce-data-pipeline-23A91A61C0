@@ -1,0 +1,32 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.env
+venv/
+.env.*
+
+# Data files
+data/raw/*
+data/staging/*
+data/processed/*
+
+# Logs
+logs/*
+*.log
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+
+# Docker
+*.pid
+
+# Tableau / Power BI cache
+*.twbr
+*.hyper

@@ -1,0 +1,78 @@
+# =====================================
+# DATABASE CONFIGURATION
+# =====================================
+database:
+  host: ${DB_HOST}
+  port: ${DB_PORT}
+  name: ${DB_NAME}
+  user: ${DB_USER}
+  password: ${DB_PASSWORD}
+  pool_size: 10
+  max_overflow: 5
+
+# =====================================
+# DATA GENERATION PARAMETERS
+# =====================================
+data_generation:
+  users:
+    record_count: 1000
+  products:
+    record_count: 500
+  orders:
+    record_count: 2000
+
+  transaction_date_range:
+    start_date: "2023-01-01"
+    end_date: "2024-12-31"
+
+  distribution:
+    order_value:
+      type: normal
+      mean: 1500
+      std_dev: 500
+
+# =====================================
+# PIPELINE CONFIGURATION
+# =====================================
+pipeline:
+  batch_size: 500
+  retry_attempts: 3
+  retry_delay_seconds: 5
+  timeout_seconds: 30
+  orchestrator_path: "scripts/pipeline_orchestrator.py"
+
+# =====================================
+# SCHEDULER CONFIGURATION  ✅ FIXED
+# =====================================
+scheduler:
+  run_time: "02:00"        # Daily run time (HH:MM)
+  timezone: "UTC"
+  allow_catchup: false
+
+# =====================================
+# DATA RETENTION POLICY
+# =====================================
+retention:
+  days: 7
+  target_directories:
+    - data/raw
+    - data/staging
+    - logs
+
+# =====================================
+# LOGGING CONFIGURATION
+# =====================================
+logging:
+  level: INFO
+  log_file: logs/pipeline.log
+  format: "%(asctime)s - %(levelname)s - %(message)s"
+
+# =====================================
+# BI TOOL CONFIGURATION
+# =====================================
+bi_tool:
+  tool: tableau   # tableau | powerbi
+  connection:
+    host: localhost
+    port: 5432
+    database: ecommerce_db
