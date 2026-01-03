@@ -118,11 +118,7 @@ def generate_all_data():
             unit_price = float(product[4])
             discount_percentage = random.choice([0, 5, 10, 15])
 
-            # 🔥 EXACT SAME LOGIC AS TEST
-            line_total = round(
-                quantity * unit_price * (1 - discount_percentage / 100),
-                2
-            )
+            line_total = quantity * unit_price * (1 - discount_percentage / 100)
 
             total_amount += line_total
 
