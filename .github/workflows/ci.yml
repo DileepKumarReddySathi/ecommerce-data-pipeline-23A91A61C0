@@ -39,28 +39,28 @@ jobs:
         run: |
           pip install -r requirements.txt
 
-      - name: Wait for PostgreSQL
-        run: |
-          for i in {1..10}; do
-            pg_isready -h localhost -p 5432 && break
-            sleep 3
-          done
-
+      # ---------------------------
+      # Create ALL schemas
+      # ---------------------------
       - name: Create database schemas
         env:
-          PGPASSWORD: ${{ secrets.PGPASSWORD }}
+          PGPASSWORD: test_password
         run: |
-          psql -h localhost -p 5432 -U test_user -d ecommerce_db_test -f sql/ddl/create_staging_schema.sql
-          psql -h localhost -p 5432 -U test_user -d ecommerce_db_test -f sql/ddl/create_production_schema.sql
-          psql -h localhost -p 5432 -U test_user -d ecommerce_db_test -f sql/ddl/create_warehouse_schema.sql
+          psql -h localhost -U test_user -d ecommerce_db_test -f sql/ddl/create_staging_schema.sql
+          psql -h localhost -U test_user -d ecommerce_db_test -f sql/ddl/create_production_schema.sql
+          psql -h localhost -U test_user -d ecommerce_db_test -f sql/ddl/create_warehouse_schema.sql
 
-      # 🔥 MISSING STEP 1 — generate raw data
+      # ---------------------------
+      # Generate raw data
+      # ---------------------------
       - name: Generate raw data
         run: |
           python scripts/data_generation/generate_data.py
 
-      # 🔥 MISSING STEP 2 — ingest raw → staging
-      - name: Ingest raw data to staging
+      # ---------------------------
+      # Ingest to staging
+      # ---------------------------
+      - name: Ingest data to staging
         env:
           DB_HOST: localhost
           DB_PORT: 5432
@@ -70,7 +70,9 @@ jobs:
         run: |
           python scripts/ingestion/ingest_to_staging.py
 
-      # 🔥 MISSING STEP 3 — staging → production
+      # ---------------------------
+      # Transform to production
+      # ---------------------------
       - name: Transform staging to production
         env:
           DB_HOST: localhost
@@ -81,8 +83,10 @@ jobs:
         run: |
           python scripts/transformation/staging_to_production.py
 
-      # ✅ NOW tests will pass
-      - name: Run unit tests with coverage
+      # ---------------------------
+      # Load warehouse
+      # ---------------------------
+      - name: Load warehouse
         env:
           DB_HOST: localhost
           DB_PORT: 5432
@@ -90,7 +94,20 @@ jobs:
           DB_USER: test_user
           DB_PASSWORD: test_password
         run: |
-          pytest tests/ -v --cov=scripts --cov-report=term --cov-report=html
+          python scripts/transformation/load_warehouse.py
+
+      # ---------------------------
+      # Run ALL tests (includes warehouse tests)
+      # ---------------------------
+      - name: Run tests with coverage
+        env:
+          DB_HOST: localhost
+          DB_PORT: 5432
+          DB_NAME: ecommerce_db_test
+          DB_USER: test_user
+          DB_PASSWORD: test_password
+        run: |
+          pytest tests/ -v --cov=scripts --cov-report=term
 
       - name: Enforce coverage threshold
         run: |
