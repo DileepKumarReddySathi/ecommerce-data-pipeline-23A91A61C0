@@ -5,8 +5,8 @@
 ## Student Information
 - Name: Dileep Reddy
 - Roll Number: 23A91A61C0
-- Email: dileepreddy@example.com
-- Submission Date: 25-12-2025
+- Email: 23A91A61C0@aec.edu.in
+- Submission Date: 03-01-2026
 
 ---
 
