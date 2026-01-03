@@ -5,6 +5,9 @@ import os
 from datetime import datetime
 from sqlalchemy import create_engine, text
 from sqlalchemy.engine import URL
+from dotenv import load_dotenv
+load_dotenv()
+
 
 # --------------------------------------------------
 # Paths
@@ -23,7 +26,7 @@ db_url = URL.create(
     username=os.getenv("DB_USER"),
     password=os.getenv("DB_PASSWORD"),
     host=os.getenv("DB_HOST"),
-    port=int(os.getenv("DB_PORT")),
+    port=int(os.getenv("DB_PORT", "5433")),
     database=os.getenv("DB_NAME"),
 )
 

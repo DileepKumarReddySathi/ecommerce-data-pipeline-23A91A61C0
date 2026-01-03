@@ -3,6 +3,9 @@ from datetime import date
 from sqlalchemy import create_engine, text
 from sqlalchemy.engine import URL
 import os
+from dotenv import load_dotenv
+load_dotenv()
+
 
 # --------------------------------------------------
 # Database connection
@@ -122,7 +125,7 @@ def build_dim_products(conn):
 
     products[[
         "product_id", "product_name", "category",
-        "sub_category", "brand", "price_category",
+        "sub_category", "brand",
         "effective_date", "end_date", "is_current"
     ]].to_sql(
         "dim_products",

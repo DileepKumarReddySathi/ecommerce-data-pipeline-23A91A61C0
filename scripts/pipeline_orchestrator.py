@@ -3,7 +3,7 @@ import time
 import json
 import logging
 import traceback
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 
 # --------------------------------------------------
@@ -14,25 +14,25 @@ REPORT_DIR = Path("data/processed")
 LOG_DIR.mkdir(exist_ok=True, parents=True)
 REPORT_DIR.mkdir(exist_ok=True, parents=True)
 
-PIPELINE_ID = f"PIPE_{datetime.utcnow().strftime('%Y%m%d_%H%M%S')}"
+PIPELINE_ID = f"PIPE_{datetime.now(timezone.utc).strftime('%Y%m%d_%H%M%S')}"
 
 MAIN_LOG = LOG_DIR / f"pipeline_orchestrator_{PIPELINE_ID}.log"
 ERROR_LOG = LOG_DIR / "pipeline_errors.log"
 
 # --------------------------------------------------
-# Logging Configuration
+# Logging Configuration (NO EMOJIS)
 # --------------------------------------------------
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s | %(levelname)s | %(message)s",
     handlers=[
-        logging.FileHandler(MAIN_LOG),
+        logging.FileHandler(MAIN_LOG, encoding="utf-8"),
         logging.StreamHandler()
     ]
 )
 
 error_logger = logging.getLogger("error_logger")
-error_handler = logging.FileHandler(ERROR_LOG)
+error_handler = logging.FileHandler(ERROR_LOG, encoding="utf-8")
 error_handler.setLevel(logging.ERROR)
 error_logger.addHandler(error_handler)
 
@@ -41,7 +41,6 @@ error_logger.addHandler(error_handler)
 # --------------------------------------------------
 PIPELINE_STEPS = [
     ("data_generation", "scripts/data_generation/generate_data.py"),
-    ("data_ingestion", "scripts/ingestion/ingest_to_staging.py"),
     ("data_quality_checks", "scripts/quality_checks/validate_data.py"),
     ("warehouse_load", "scripts/transformation/load_warehouse.py"),
     ("analytics_generation", "scripts/transformation/generate_analytics.py"),
@@ -54,7 +53,7 @@ MAX_RETRIES = 3
 BACKOFF_SECONDS = [1, 2, 4]
 
 # --------------------------------------------------
-# Helper: Execute Step with Retry
+# Execute Step with Retry
 # --------------------------------------------------
 def execute_step(step_name, script_path):
     start = time.time()
@@ -62,7 +61,7 @@ def execute_step(step_name, script_path):
 
     while retries < MAX_RETRIES:
         try:
-            logging.info(f"▶ Starting step: {step_name} (attempt {retries + 1})")
+            logging.info(f"Starting step: {step_name} (attempt {retries + 1})")
 
             subprocess.run(
                 ["python", script_path],
@@ -71,7 +70,7 @@ def execute_step(step_name, script_path):
             )
 
             duration = time.time() - start
-            logging.info(f"✅ Step completed: {step_name} | Duration: {duration:.2f}s")
+            logging.info(f"Step completed: {step_name} | Duration: {duration:.2f}s")
 
             return {
                 "status": "success",
@@ -82,14 +81,13 @@ def execute_step(step_name, script_path):
 
         except subprocess.TimeoutExpired as e:
             retries += 1
-            logging.warning(f"⏳ Timeout in {step_name}, retrying...")
+            logging.warning(f"Timeout in {step_name}, retrying...")
             if retries < MAX_RETRIES:
                 time.sleep(BACKOFF_SECONDS[retries - 1])
             else:
                 return step_failed(step_name, e, retries)
 
         except subprocess.CalledProcessError as e:
-            # Permanent error → no retry
             return step_failed(step_name, e, retries, retryable=False)
 
         except Exception as e:
@@ -103,8 +101,7 @@ def execute_step(step_name, script_path):
 
 
 def step_failed(step_name, exception, retries, retryable=True):
-    msg = f"❌ Step failed: {step_name} | Retries: {retries}"
-    logging.error(msg)
+    logging.error(f"Step failed: {step_name} | Retries: {retries}")
     error_logger.error(traceback.format_exc())
 
     return {
@@ -119,12 +116,12 @@ def step_failed(step_name, exception, retries, retryable=True):
 # Main Orchestrator
 # --------------------------------------------------
 def run_pipeline():
-    pipeline_start = datetime.utcnow()
+    pipeline_start = datetime.now(timezone.utc)
     steps_report = {}
     errors = []
     warnings = []
 
-    logging.info(f"🚀 Pipeline started: {PIPELINE_ID}")
+    logging.info(f"Pipeline started: {PIPELINE_ID}")
 
     for step_name, script in PIPELINE_STEPS:
         result = execute_step(step_name, script)
@@ -132,10 +129,10 @@ def run_pipeline():
 
         if result["status"] != "success":
             errors.append(f"{step_name} failed")
-            logging.error(f"🛑 Pipeline stopped at step: {step_name}")
+            logging.error(f"Pipeline stopped at step: {step_name}")
             break
 
-    pipeline_end = datetime.utcnow()
+    pipeline_end = datetime.now(timezone.utc)
 
     status = (
         "success"
@@ -164,8 +161,8 @@ def run_pipeline():
     with open(report_path, "w") as f:
         json.dump(pipeline_report, f, indent=2)
 
-    logging.info("📄 Pipeline execution report generated")
-    logging.info(f"🏁 Pipeline finished with status: {status}")
+    logging.info("Pipeline execution report generated")
+    logging.info(f"Pipeline finished with status: {status}")
 
 # --------------------------------------------------
 # Entry Point

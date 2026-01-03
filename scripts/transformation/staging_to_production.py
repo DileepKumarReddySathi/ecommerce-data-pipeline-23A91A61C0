@@ -14,15 +14,17 @@ os.makedirs(OUTPUT_PATH, exist_ok=True)
 # --------------------------------------------------
 # Database connection
 # --------------------------------------------------
-db_url = URL.create(
-    drivername="postgresql+psycopg2",
-    username=os.getenv("DB_USER"),
-    password=os.getenv("DB_PASSWORD"),
-    host=os.getenv("DB_HOST"),
-    port=int(os.getenv("DB_PORT")),
-    database=os.getenv("DB_NAME"),
+engine = create_engine(
+    URL.create(
+        drivername="postgresql+psycopg2",
+        username=os.getenv("DB_USER", "postgres"),
+        password=os.getenv("DB_PASSWORD", "Dilep@2025"),
+        host=os.getenv("DB_HOST", "localhost"),
+        port=int(os.getenv("DB_PORT", 5432)),
+        database=os.getenv("DB_NAME", "ecommerce_db"),
+    )
 )
-engine = create_engine(db_url, future=True)
+
 
 # --------------------------------------------------
 # Cleansing functions

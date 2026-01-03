@@ -3,6 +3,9 @@ import os
 from datetime import datetime
 from sqlalchemy import create_engine, text
 from sqlalchemy.engine import URL
+from dotenv import load_dotenv
+load_dotenv()
+
 
 # ==================================================
 # Configuration
