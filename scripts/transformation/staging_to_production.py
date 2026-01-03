@@ -1,5 +1,3 @@
-# scripts/transformation/staging_to_production.py
-
 import pandas as pd
 from sqlalchemy import create_engine, text
 from sqlalchemy.engine import URL
@@ -22,25 +20,42 @@ engine = create_engine(db_url, future=True)
 
 
 # --------------------------------------------------
-# Dimension loader (SAFE)
+# Helper: get table columns
+# --------------------------------------------------
+def get_table_columns(table_name, conn):
+    return pd.read_sql(
+        f"""
+        SELECT column_name
+        FROM information_schema.columns
+        WHERE table_schema = 'production'
+          AND table_name = '{table_name}'
+        """,
+        conn,
+    )["column_name"].tolist()
+
+
+# --------------------------------------------------
+# Dimension loader (SCHEMA-SAFE)
 # --------------------------------------------------
 def load_dimension(df, table_name, conn):
     """
-    Full reload dimension tables safely.
-    Enforces NOT NULL constraints explicitly.
+    Full reload dimension tables.
+    Automatically drops columns not present in target table.
     """
 
-    # ---------- CRITICAL FIX ----------
-    if table_name == "products":
-        df["product_name"] = df["product_name"].fillna("UNKNOWN_PRODUCT")
-        df["category"] = df["category"].fillna("UNKNOWN")
-        df["sub_category"] = df["sub_category"].fillna("UNKNOWN")
-
-        # Drop rows that still violate core constraints
-        df = df.dropna(subset=["product_id", "product_name", "price", "cost"])
-
+    # Enforce critical NOT NULLs
     if table_name == "customers":
         df = df.dropna(subset=["customer_id", "email"])
+
+    if table_name == "products":
+        df["product_name"] = df["product_name"].fillna("UNKNOWN_PRODUCT")
+        df = df.dropna(subset=["product_id", "product_name", "price", "cost"])
+
+    # Get actual DB columns
+    target_cols = get_table_columns(table_name, conn)
+
+    # Drop extra columns (like loaded_at)
+    df = df[[c for c in df.columns if c in target_cols]]
 
     # Idempotent reload
     conn.execute(text(f"TRUNCATE TABLE production.{table_name} CASCADE;"))
@@ -57,31 +72,20 @@ def load_dimension(df, table_name, conn):
 
 
 # --------------------------------------------------
-# Incremental fact loader
+# Fact loader (INCREMENTAL + loaded_at)
 # --------------------------------------------------
 def load_fact_incremental(df, table_name, conn, pk):
     """
     Incremental load for fact tables.
-    Safe against schema drift.
+    Adds loaded_at only if column exists.
     """
 
-    # Detect columns in target table
-    existing_cols = pd.read_sql(
-        f"""
-        SELECT column_name
-        FROM information_schema.columns
-        WHERE table_schema = 'production'
-          AND table_name = '{table_name}'
-        """,
-        conn,
-    )["column_name"].tolist()
+    target_cols = get_table_columns(table_name, conn)
 
-    # Add loaded_at ONLY if column exists
-    if "loaded_at" in existing_cols:
-        from datetime import datetime, timezone
+    if "loaded_at" in target_cols:
         df["loaded_at"] = datetime.now(timezone.utc)
 
-    # Incremental logic
+    # Remove rows already loaded
     existing_ids = pd.read_sql(
         f"SELECT {pk} FROM production.{table_name}", conn
     )[pk].tolist()
@@ -91,8 +95,8 @@ def load_fact_incremental(df, table_name, conn, pk):
     if df_new.empty:
         return 0
 
-    # Drop any extra columns not present in DB
-    df_new = df_new[[c for c in df_new.columns if c in existing_cols]]
+    # Drop non-existing columns
+    df_new = df_new[[c for c in df_new.columns if c in target_cols]]
 
     df_new.to_sql(
         name=table_name,
@@ -113,27 +117,19 @@ def load_fact_incremental(df, table_name, conn, pk):
 def run_staging_to_production():
     with engine.begin() as conn:
 
-        # ----------------------------
         # Customers
-        # ----------------------------
         cust = pd.read_sql("SELECT * FROM staging.customers", conn)
         load_dimension(cust, "customers", conn)
 
-        # ----------------------------
-        # Products (FIXED)
-        # ----------------------------
+        # Products
         prod = pd.read_sql("SELECT * FROM staging.products", conn)
         load_dimension(prod, "products", conn)
 
-        # ----------------------------
         # Transactions (fact)
-        # ----------------------------
         txn = pd.read_sql("SELECT * FROM staging.transactions", conn)
         load_fact_incremental(txn, "transactions", conn, "transaction_id")
 
-        # ----------------------------
         # Transaction items (fact)
-        # ----------------------------
         items = pd.read_sql("SELECT * FROM staging.transaction_items", conn)
         load_fact_incremental(items, "transaction_items", conn, "item_id")
 
