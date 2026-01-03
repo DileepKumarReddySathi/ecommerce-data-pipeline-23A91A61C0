@@ -1,5 +1,3 @@
-# scripts/data_generation/generate_data.py
-
 import csv
 import random
 import json
@@ -7,7 +5,6 @@ import os
 import yaml
 from faker import Faker
 from datetime import datetime
-from decimal import Decimal, ROUND_HALF_UP
 
 # ----------------------------
 # Load config
@@ -38,7 +35,7 @@ os.makedirs(OUTPUT_DIR, exist_ok=True)
 def generate_all_data():
     """
     Generates all raw CSV data files.
-    This function is used by tests and pipelines.
+    Used by tests and pipeline runs.
     """
 
     # ----------------------------
@@ -50,22 +47,19 @@ def generate_all_data():
         customer_id = f"CUST{i:04d}"
         first_name = faker.first_name()
         last_name = faker.last_name()
-        email = f"{first_name.lower()}.{last_name.lower()}{i}@example.com"
 
-        customers.append(
-            [
-                customer_id,
-                first_name,
-                last_name,
-                email,
-                faker.phone_number(),
-                faker.date_between(start_date=START_DATE, end_date=END_DATE).strftime("%Y-%m-%d"),
-                faker.city(),
-                faker.state(),
-                faker.country(),
-                random.choice(["18-25", "26-35", "36-45", "46-60", "60+"]),
-            ]
-        )
+        customers.append([
+            customer_id,
+            first_name,
+            last_name,
+            f"{first_name.lower()}.{last_name.lower()}{i}@example.com",
+            faker.phone_number(),
+            faker.date_between(start_date=START_DATE, end_date=END_DATE).strftime("%Y-%m-%d"),
+            faker.city(),
+            faker.state(),
+            faker.country(),
+            random.choice(["18-25", "26-35", "36-45", "46-60", "60+"]),
+        ])
 
     with open(os.path.join(OUTPUT_DIR, "customers.csv"), "w", newline="") as f:
         writer = csv.writer(f)
@@ -85,19 +79,17 @@ def generate_all_data():
     for i in range(1, NUM_PRODUCTS + 1):
         price = round(random.uniform(10, 1000), 2)
 
-        products.append(
-            [
-                f"PROD{i:04d}",
-                faker.word().capitalize(),
-                random.choice(categories),
-                faker.word().capitalize(),
-                price,
-                round(random.uniform(5, price - 1), 2),
-                faker.company(),
-                random.randint(10, 500),
-                f"SUPP{random.randint(1,100):03d}",
-            ]
-        )
+        products.append([
+            f"PROD{i:04d}",
+            faker.word().capitalize(),
+            random.choice(categories),
+            faker.word().capitalize(),
+            price,
+            round(random.uniform(5, price - 1), 2),
+            faker.company(),
+            random.randint(10, 500),
+            f"SUPP{random.randint(1,100):03d}",
+        ])
 
     with open(os.path.join(OUTPUT_DIR, "products.csv"), "w", newline="") as f:
         writer = csv.writer(f)
@@ -117,19 +109,20 @@ def generate_all_data():
         transaction_id = f"TXN{i:05d}"
         customer_id = random.choice(customers)[0]
 
-        total_amount = Decimal("0.00")
+        total_amount = 0.0
+        num_items = random.randint(1, 5)
 
-        for _ in range(random.randint(1, 5)):
+        for _ in range(num_items):
             product = random.choice(products)
             quantity = random.randint(1, 3)
-            unit_price = Decimal(str(product[4]))
-            discount = Decimal(random.choice([0, 5, 10, 15])) / Decimal("100")
+            unit_price = float(product[4])
+            discount_percentage = random.choice([0, 5, 10, 15])
 
-            line_total = (
-                Decimal(quantity)
-                * unit_price
-                * (Decimal("1") - discount)
-            ).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+            # 🔥 EXACT SAME LOGIC AS TEST
+            line_total = round(
+                quantity * unit_price * (1 - discount_percentage / 100),
+                2
+            )
 
             total_amount += line_total
 
@@ -138,9 +131,9 @@ def generate_all_data():
                 transaction_id,
                 product[0],
                 quantity,
-                float(unit_price),
-                int(discount * 100),
-                float(line_total),
+                unit_price,
+                discount_percentage,
+                line_total,
             ])
 
         transactions.append([
@@ -148,9 +141,12 @@ def generate_all_data():
             customer_id,
             faker.date_between(start_date=START_DATE, end_date=END_DATE).strftime("%Y-%m-%d"),
             faker.time(),
-            random.choice(["Credit Card", "Debit Card", "UPI", "Cash on Delivery", "Net Banking"]),
+            random.choice([
+                "Credit Card", "Debit Card", "UPI",
+                "Cash on Delivery", "Net Banking"
+            ]),
             faker.address().replace("\n", ", "),
-            float(total_amount),
+            round(total_amount, 2),
         ])
 
     with open(os.path.join(OUTPUT_DIR, "transactions.csv"), "w", newline="") as f:
@@ -186,6 +182,9 @@ def generate_all_data():
     return True
 
 
+# ----------------------------
+# Script execution
+# ----------------------------
 if __name__ == "__main__":
     generate_all_data()
     print("✅ Raw data generation completed successfully")
