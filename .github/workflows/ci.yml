@@ -50,15 +50,12 @@ jobs:
 
       - name: Create database schemas
         env:
-          DB_HOST: localhost
-          DB_PORT: 5432
-          DB_NAME: ecommerce_db_test
-          DB_USER: test_user
-          DB_PASSWORD: test_password
+            PGPASSWORD: ${{ secrets.PGPASSWORD }}
         run: |
-          psql -h localhost -U test_user -d ecommerce_db_test -f sql/ddl/create_staging_schema.sql
-          psql -h localhost -U test_user -d ecommerce_db_test -f sql/ddl/create_production_schema.sql
-          psql -h localhost -U test_user -d ecommerce_db_test -f sql/ddl/create_warehouse_schema.sql
+             psql -h localhost -p 5432 -U test_user -d ecommerce_db_test -f sql/ddl/create_staging_schema.sql
+             psql -h localhost -p 5432 -U test_user -d ecommerce_db_test -f sql/ddl/create_production_schema.sql
+             psql -h localhost -p 5432 -U test_user -d ecommerce_db_test -f sql/ddl/create_warehouse_schema.sql
+
 
       - name: Run unit tests with coverage
         env:
