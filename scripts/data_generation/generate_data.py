@@ -168,9 +168,19 @@ def generate_all_data():
             unit_price = product[4]
             discount_percentage = random.choice([0, 5, 10, 15])
 
-            line_total = round(
-                quantity * unit_price * (1 - discount_percentage / 100), 2
-            )
+            from decimal import Decimal, ROUND_HALF_UP
+
+               unit_price_d = Decimal(str(unit_price))
+               discount_d = Decimal(str(discount_percentage)) / Decimal("100")
+
+         line_total = (
+                  Decimal(quantity)
+                      * unit_price_d
+                    * (Decimal("1") - discount_d)
+                    ).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+
+              line_total = float(line_total)
+
             total_amount += line_total
 
             transaction_items.append(
