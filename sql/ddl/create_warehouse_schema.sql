@@ -32,20 +32,23 @@ CREATE TABLE IF NOT EXISTS warehouse.dim_payment_method (
 -- =========================
 -- DIMENSION: CUSTOMERS (SCD TYPE 2)
 -- =========================
-CREATE TABLE IF NOT EXISTS warehouse.dim_customers (
-    customer_key SERIAL PRIMARY KEY,
-    customer_id VARCHAR(20),
-    full_name VARCHAR(120),
-    email VARCHAR(100),
-    city VARCHAR(50),
-    state VARCHAR(50),
-    country VARCHAR(50),
-    age_group VARCHAR(20),
-    registration_date DATE,
-    effective_date DATE,
-    end_date DATE,
-    is_current BOOLEAN
+DROP TABLE IF EXISTS warehouse.dim_customers CASCADE;
+
+CREATE TABLE warehouse.dim_customers (
+    customer_key        SERIAL PRIMARY KEY,
+    customer_id         VARCHAR(20) NOT NULL,
+    full_name           VARCHAR(200),
+    email               VARCHAR(150),
+    city                VARCHAR(150),
+    state               VARCHAR(100),
+    country             VARCHAR(100),
+    age_group           VARCHAR(20),
+    registration_date   DATE,
+    effective_date      DATE NOT NULL,
+    end_date            DATE,
+    is_current          BOOLEAN DEFAULT TRUE
 );
+
 
 -- =========================
 -- DIMENSION: PRODUCTS (SCD TYPE 2)
