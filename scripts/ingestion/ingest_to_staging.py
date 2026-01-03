@@ -6,21 +6,13 @@ from datetime import datetime
 from sqlalchemy import create_engine, text
 from sqlalchemy.engine import URL
 from dotenv import load_dotenv
+
 load_dotenv()
 
-
-# --------------------------------------------------
-# Paths
-# --------------------------------------------------
 DATA_PATH = "data/raw"
 REPORT_PATH = "data/staging"
-
 os.makedirs(REPORT_PATH, exist_ok=True)
 
-# --------------------------------------------------
-# Create SQLAlchemy engine SAFELY
-# (Handles special characters like @ in password)
-# --------------------------------------------------
 db_url = URL.create(
     drivername="postgresql+psycopg2",
     username=os.getenv("DB_USER"),
@@ -30,11 +22,10 @@ db_url = URL.create(
     database=os.getenv("DB_NAME"),
 )
 
+print("▶ Starting ingestion")
 engine = create_engine(db_url, future=True)
+print("▶ Database connected")
 
-# --------------------------------------------------
-# Tables to load
-# --------------------------------------------------
 TABLES = {
     "customers": "staging.customers",
     "products": "staging.products",
@@ -42,9 +33,6 @@ TABLES = {
     "transaction_items": "staging.transaction_items"
 }
 
-# --------------------------------------------------
-# Ingestion summary
-# --------------------------------------------------
 start_time = time.time()
 
 summary = {
@@ -52,27 +40,28 @@ summary = {
     "tables_loaded": {}
 }
 
-# --------------------------------------------------
-# Atomic ingestion (all-or-nothing)
-# --------------------------------------------------
 with engine.begin() as conn:
     for file, table in TABLES.items():
         try:
             file_path = f"{DATA_PATH}/{file}.csv"
+            if not os.path.exists(file_path):
+                raise FileNotFoundError(f"Missing input file: {file_path}")
+
             df = pd.read_csv(file_path)
 
-            # Idempotent load
-            conn.execute(text(f"TRUNCATE TABLE {table};"))
-
-            # Bulk insert in safe batches
-            df.to_sql(
-                name=table.split(".")[1],
-                con=conn,
-                schema="staging",
-                if_exists="append",
-                index=False,
-                chunksize=100  # 🔥 CRITICAL FIX
+            conn.execute(
+                text(f"TRUNCATE TABLE {table} RESTART IDENTITY CASCADE;")
             )
+
+            df.to_sql(
+    name=table.split(".")[1],
+    con=conn,
+    schema="staging",
+    if_exists="append",
+    index=False,
+    method="multi",
+    chunksize=5000
+)
 
             summary["tables_loaded"][table] = {
                 "rows_loaded": len(df),
@@ -87,16 +76,10 @@ with engine.begin() as conn:
                 "status": "failed",
                 "error_message": str(e)
             }
-            raise  # rollback entire transaction
+            raise
 
-# --------------------------------------------------
-# Final execution time
-# --------------------------------------------------
 summary["total_execution_time_seconds"] = round(time.time() - start_time, 2)
 
-# --------------------------------------------------
-# Write ingestion report
-# --------------------------------------------------
 with open(f"{REPORT_PATH}/ingestion_summary.json", "w") as f:
     json.dump(summary, f, indent=2)
 

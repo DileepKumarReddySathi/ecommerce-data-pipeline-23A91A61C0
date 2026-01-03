@@ -4,6 +4,9 @@ import os
 from datetime import datetime
 from sqlalchemy import create_engine, text
 from sqlalchemy.engine import URL
+from dotenv import load_dotenv
+
+load_dotenv()
 
 # --------------------------------------------------
 # Output path
@@ -20,7 +23,7 @@ engine = create_engine(
         username=os.getenv("DB_USER", "postgres"),
         password=os.getenv("DB_PASSWORD", "Dilep@2025"),
         host=os.getenv("DB_HOST", "localhost"),
-        port=int(os.getenv("DB_PORT", 5432)),
+        port=int(os.getenv("DB_PORT", 5433)),
         database=os.getenv("DB_NAME", "ecommerce_db"),
     )
 )
