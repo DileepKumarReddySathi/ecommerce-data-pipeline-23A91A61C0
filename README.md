@@ -117,13 +117,8 @@ python scripts/transformation/staging_to_production.py
 python scripts/transformation/load_warehouse.py
 python scripts/transformation/generate_analytics.py
 Running Tests
-bash
-Copy code
 bash scripts/run_tests.sh
 or
-
-bash
-Copy code
 pytest tests/ -v
 Dashboard Access
 Power BI
