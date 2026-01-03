@@ -1,7 +1,7 @@
 -- ==================================================
 -- Production Schema for E-Commerce Data Pipeline
 -- Fully normalized (3NF)
--- Corrected for real-world data lengths
+-- Corrected for ETL compatibility
 -- ==================================================
 
 CREATE SCHEMA IF NOT EXISTS production;
@@ -20,7 +20,7 @@ CREATE TABLE production.customers (
     registration_date  DATE NOT NULL,
     city               VARCHAR(150),
     state              VARCHAR(100),
-    country             VARCHAR(120),
+    country            VARCHAR(120),
     age_group          VARCHAR(20),
     created_at         TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at         TIMESTAMP DEFAULT CURRENT_TIMESTAMP
@@ -58,8 +58,11 @@ CREATE TABLE production.transactions (
     payment_method    VARCHAR(50),
     shipping_address  TEXT,
     total_amount      DECIMAL(12,2) CHECK (total_amount >= 0),
+
+    -- Audit columns (required by ETL)
     created_at        TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at        TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    loaded_at         TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
 
     CONSTRAINT fk_txn_customer
         FOREIGN KEY (customer_id)
@@ -85,6 +88,8 @@ CREATE TABLE production.transaction_items (
     unit_price           DECIMAL(12,2) CHECK (unit_price >= 0),
     discount_percentage  DECIMAL(5,2) CHECK (discount_percentage BETWEEN 0 AND 100),
     line_total           DECIMAL(12,2) CHECK (line_total >= 0),
+
+    -- Audit columns
     created_at           TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at           TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
 
