@@ -62,9 +62,26 @@ def load_dimension(df, table_name, conn):
 def load_fact_incremental(df, table_name, conn, pk):
     """
     Incremental load for fact tables.
+    Safe against schema drift.
     """
-    df["loaded_at"] = datetime.now(timezone.utc)
 
+    # Detect columns in target table
+    existing_cols = pd.read_sql(
+        f"""
+        SELECT column_name
+        FROM information_schema.columns
+        WHERE table_schema = 'production'
+          AND table_name = '{table_name}'
+        """,
+        conn,
+    )["column_name"].tolist()
+
+    # Add loaded_at ONLY if column exists
+    if "loaded_at" in existing_cols:
+        from datetime import datetime, timezone
+        df["loaded_at"] = datetime.now(timezone.utc)
+
+    # Incremental logic
     existing_ids = pd.read_sql(
         f"SELECT {pk} FROM production.{table_name}", conn
     )[pk].tolist()
@@ -73,6 +90,9 @@ def load_fact_incremental(df, table_name, conn, pk):
 
     if df_new.empty:
         return 0
+
+    # Drop any extra columns not present in DB
+    df_new = df_new[[c for c in df_new.columns if c in existing_cols]]
 
     df_new.to_sql(
         name=table_name,
